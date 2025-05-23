@@ -982,7 +982,7 @@ function FocusView({
   const [recurringTasks, setRecurringTasks] = useState([]);
   const [recurringTaskIndex, setRecurringTaskIndex] = useState(0);
   const [activeRecurringTask, setActiveRecurringTask] = useState(null);
-  const [focusMode, setFocusMode] = useState('non-recurring'); // 'non-recurring' or 'recurring'
+  const [selectedRecurringTaskId, setSelectedRecurringTaskId] = useState(null);
   const [isEditingSessionCount, setIsEditingSessionCount] = useState(false);
   const [editedSessionCount, setEditedSessionCount] = useState(0);
   const [isAddingTask, setIsAddingTask] = useState(false);
@@ -1141,7 +1141,7 @@ useEffect(() => {
       const timeSpentSinceStart = Math.floor((Date.now() - taskStartTimeRef.current) / 1000);
       
       if (timeSpentSinceStart > 0) {
-        if (focusMode === 'non-recurring' && activeTask) {
+        if (activeTask) {
           // Get the current task from the tasks array to ensure we have the most up-to-date timeSpent
           const currentTask = tasks.find(task => task.id === activeTask.id);
           const updatedTimeSpent = (currentTask?.timeSpent || 0) + timeSpentSinceStart;
@@ -1160,27 +1160,29 @@ useEffect(() => {
           }).catch(error => {
             console.error("Error updating non-recurring task time:", error);
           });
-        } else if (focusMode === 'recurring' && activeRecurringTask) {
-          // Get the current recurring task from the tasks array
-          const currentRecurringTask = tasks.find(task => task.id === activeRecurringTask.id);
-          const updatedTimeSpent = (currentRecurringTask?.timeSpent || 0) + timeSpentSinceStart;
-          
-          // Update local state first for immediate UI reflection
-          setTasks(prev => prev.map(task => 
-            task.id === activeRecurringTask.id 
-              ? { ...task, timeSpent: updatedTimeSpent } 
-              : task
-          ));
-          
-          // Also update in Firebase
-          const taskRef = doc(db, 'users', userId, 'tasks', activeRecurringTask.id);
-          updateDoc(taskRef, { 
-            timeSpent: updatedTimeSpent
-          }).catch(error => {
-            console.error("Error updating recurring task time:", error);
-          });
-          
-          setRecurringTimeSpent(prev => prev + timeSpentSinceStart);
+        } else if (selectedRecurringTaskId) {
+          // Get the selected recurring task from the tasks array
+          const selectedRecurringTask = tasks.find(task => task.id === selectedRecurringTaskId);
+          if (selectedRecurringTask) {
+            const updatedTimeSpent = (selectedRecurringTask?.timeSpent || 0) + timeSpentSinceStart;
+            
+            // Update local state first for immediate UI reflection
+            setTasks(prev => prev.map(task => 
+              task.id === selectedRecurringTaskId 
+                ? { ...task, timeSpent: updatedTimeSpent } 
+                : task
+            ));
+            
+            // Also update in Firebase
+            const taskRef = doc(db, 'users', userId, 'tasks', selectedRecurringTaskId);
+            updateDoc(taskRef, { 
+              timeSpent: updatedTimeSpent
+            }).catch(error => {
+              console.error("Error updating recurring task time:", error);
+            });
+            
+            setRecurringTimeSpent(prev => prev + timeSpentSinceStart);
+          }
         }
         
         // Reset the start time reference for the next update
@@ -1193,46 +1195,48 @@ useEffect(() => {
       const timeSpentInSeconds = Math.floor((Date.now() - taskStartTimeRef.current) / 1000);
       
       if (timeSpentInSeconds > 0) {
-        if (focusMode === 'non-recurring' && activeTask) {
-          // Get the current task to ensure we have the most up-to-date timeSpent
-          const currentTask = tasks.find(task => task.id === activeTask.id);
-          const updatedTimeSpent = (currentTask?.timeSpent || 0) + timeSpentInSeconds;
-          
-          // Update local state
-          setTasks(tasks.map(task => 
-            task.id === activeTask.id 
-              ? { ...task, timeSpent: updatedTimeSpent } 
-              : task
-          ));
-          
-          // Try to update Firebase
-          try {
-            const taskRef = doc(db, 'users', userId, 'tasks', activeTask.id);
-            updateDoc(taskRef, { timeSpent: updatedTimeSpent });
-          } catch (error) {
-            console.error("Error saving task time on page close:", error);
+        if (activeTask) {
+                  // Get the current task to ensure we have the most up-to-date timeSpent
+                  const currentTask = tasks.find(task => task.id === activeTask.id);
+                  const updatedTimeSpent = (currentTask?.timeSpent || 0) + timeSpentInSeconds;
+                  
+                  // Update local state
+                  setTasks(tasks.map(task => 
+                    task.id === activeTask.id 
+                      ? { ...task, timeSpent: updatedTimeSpent } 
+                      : task
+                  ));
+                  
+                  // Try to update Firebase
+                  try {
+                    const taskRef = doc(db, 'users', userId, 'tasks', activeTask.id);
+                    updateDoc(taskRef, { timeSpent: updatedTimeSpent });
+                  } catch (error) {
+                    console.error("Error saving task time on page close:", error);
+                  }
+                } else if (selectedRecurringTaskId) {
+          // Get the selected recurring task
+          const selectedRecurringTask = tasks.find(task => task.id === selectedRecurringTaskId);
+          if (selectedRecurringTask) {
+            const updatedTimeSpent = (selectedRecurringTask?.timeSpent || 0) + timeSpentInSeconds;
+            
+            // Update local state
+            setTasks(tasks.map(task => 
+              task.id === selectedRecurringTaskId 
+                ? { ...task, timeSpent: updatedTimeSpent } 
+                : task
+            ));
+            
+            // Try to update Firebase
+            try {
+              const taskRef = doc(db, 'users', userId, 'tasks', selectedRecurringTaskId);
+              updateDoc(taskRef, { timeSpent: updatedTimeSpent });
+            } catch (error) {
+              console.error("Error saving recurring task time on page close:", error);
+            }
+            
+            setRecurringTimeSpent(prev => prev + timeSpentInSeconds);
           }
-        } else if (focusMode === 'recurring' && activeRecurringTask) {
-          // Get the current recurring task
-          const currentRecurringTask = tasks.find(task => task.id === activeRecurringTask.id);
-          const updatedTimeSpent = (currentRecurringTask?.timeSpent || 0) + timeSpentInSeconds;
-          
-          // Update local state
-          setTasks(tasks.map(task => 
-            task.id === activeRecurringTask.id 
-              ? { ...task, timeSpent: updatedTimeSpent } 
-              : task
-          ));
-          
-          // Try to update Firebase
-          try {
-            const taskRef = doc(db, 'users', userId, 'tasks', activeRecurringTask.id);
-            updateDoc(taskRef, { timeSpent: updatedTimeSpent });
-          } catch (error) {
-            console.error("Error saving recurring task time on page close:", error);
-          }
-          
-          setRecurringTimeSpent(prev => prev + timeSpentInSeconds);
         }
       }
     };
@@ -1247,7 +1251,7 @@ useEffect(() => {
       // Reset task start time when timer is not running
       taskStartTimeRef.current = null;
     }
-  }, [timerRunning, timerMode, activeTask, activeRecurringTask, focusMode, tasks, setTasks, setRecurringTimeSpent, userId]);
+  }, [timerRunning, timerMode, activeTask, selectedRecurringTaskId, tasks, setTasks, setRecurringTimeSpent, userId]);
 
   // Sort tasks based on priority and due date
   useEffect(() => {
@@ -1349,10 +1353,10 @@ useEffect(() => {
       }
     }
     // Otherwise update as normal
-    else if (sorted.length > 0 && !activeTask && focusMode === 'non-recurring') {
+    else if (sorted.length > 0 && !activeTask) {
       setActiveTask(sorted[0]);
       setTaskIndex(0);
-    } else if (sorted.length > 0 && focusMode === 'non-recurring') {
+    } else if (sorted.length > 0) {
       const currentTaskIndex = sorted.findIndex(task => task.id === activeTask?.id);
       if (currentTaskIndex === -1) {
         setActiveTask(sorted[0]);
@@ -1360,7 +1364,7 @@ useEffect(() => {
       } else {
         setTaskIndex(currentTaskIndex);
       }
-    } else if (focusMode === 'non-recurring') {
+    } else {
       setActiveTask(null);
       setTaskIndex(0);
     }
@@ -1371,7 +1375,7 @@ useEffect(() => {
       task.recurrence && 
       task.recurrence !== 'non-recurring'
     );
-    
+
     // Sort recurring tasks by priority: daily > weekly > monthly, then by task priority
     const sortedRecurring = [...recTasks].sort((a, b) => {
       // First by recurrence pattern
@@ -1398,36 +1402,14 @@ useEffect(() => {
       
       return 0;
     });
-    
+
     setRecurringTasks(sortedRecurring);
-    
-    // If the current active recurring task is completed, select a new task
-    if (activeRecurringTask && tasks.find(t => t.id === activeRecurringTask.id)?.completed) {
-      if (sortedRecurring.length > 0) {
-        setActiveRecurringTask(sortedRecurring[0]);
-        setRecurringTaskIndex(0);
-      } else {
-        setActiveRecurringTask(null);
-        setRecurringTaskIndex(0);
-      }
+
+    // Clear selected recurring task if it's completed
+    if (selectedRecurringTaskId && tasks.find(t => t.id === selectedRecurringTaskId)?.completed) {
+      setSelectedRecurringTaskId(null);
     }
-    // Otherwise update as normal
-    else if (sortedRecurring.length > 0 && !activeRecurringTask && focusMode === 'recurring') {
-      setActiveRecurringTask(sortedRecurring[0]);
-      setRecurringTaskIndex(0);
-    } else if (sortedRecurring.length > 0 && focusMode === 'recurring') {
-      const currentRecIndex = sortedRecurring.findIndex(task => task.id === activeRecurringTask?.id);
-      if (currentRecIndex === -1) {
-        setActiveRecurringTask(sortedRecurring[0]);
-        setRecurringTaskIndex(0);
-      } else {
-        setRecurringTaskIndex(currentRecIndex);
-      }
-    } else if (focusMode === 'recurring') {
-      setActiveRecurringTask(null);
-      setRecurringTaskIndex(0);
-    }
-  }, [tasks, focusMode, activeTask, activeRecurringTask]);
+    }, [tasks, activeTask, selectedRecurringTaskId]);
 
   // Handle slider change - reversed direction (max to 0)
   const handleSliderChange = (e) => {
@@ -1466,7 +1448,7 @@ const updateCurrentTaskTime = () => {
     const timeSpentSeconds = Math.floor(timeSpentMs / 1000);
     
     if (timeSpentSeconds > 0) {
-      if (focusMode === 'non-recurring' && activeTask) {
+      if (activeTask) {
         // Get the current task
         const currentTask = tasks.find(task => task.id === activeTask.id);
         const updatedTimeSpent = (currentTask?.timeSpent || 0) + timeSpentSeconds;
@@ -1489,32 +1471,34 @@ const updateCurrentTaskTime = () => {
         } catch (error) {
           console.error("Error updating non-recurring task time:", error);
         }
-      } else if (focusMode === 'recurring' && activeRecurringTask) {
-        // Get the current recurring task
-        const currentRecurringTask = tasks.find(task => task.id === activeRecurringTask.id);
-        const updatedTimeSpent = (currentRecurringTask?.timeSpent || 0) + timeSpentSeconds;
-        const updatedTimeSpentToday = (currentRecurringTask?.timeSpentToday || 0) + timeSpentSeconds;
-        
-        // Update recurring task in local state
-        setTasks(tasks.map(task => 
-          task.id === activeRecurringTask.id 
-            ? { ...task, timeSpent: updatedTimeSpent, timeSpentToday: updatedTimeSpentToday } 
-            : task
-        ));
-        
-        // Update in Firebase
-        try {
-          const taskRef = doc(db, 'users', userId, 'tasks', activeRecurringTask.id);
-          updateDoc(taskRef, { 
-            timeSpent: updatedTimeSpent,
-            timeSpentToday: updatedTimeSpentToday
-          });
-        } catch (error) {
-          console.error("Error updating recurring task time:", error);
+      } else if (selectedRecurringTaskId) {
+        // Get the selected recurring task
+        const selectedRecurringTask = tasks.find(task => task.id === selectedRecurringTaskId);
+        if (selectedRecurringTask) {
+          const updatedTimeSpent = (selectedRecurringTask?.timeSpent || 0) + timeSpentSeconds;
+          const updatedTimeSpentToday = (selectedRecurringTask?.timeSpentToday || 0) + timeSpentSeconds;
+          
+          // Update recurring task in local state
+          setTasks(tasks.map(task => 
+            task.id === selectedRecurringTaskId 
+              ? { ...task, timeSpent: updatedTimeSpent, timeSpentToday: updatedTimeSpentToday } 
+              : task
+          ));
+          
+          // Update in Firebase
+          try {
+            const taskRef = doc(db, 'users', userId, 'tasks', selectedRecurringTaskId);
+            updateDoc(taskRef, { 
+              timeSpent: updatedTimeSpent,
+              timeSpentToday: updatedTimeSpentToday
+            });
+          } catch (error) {
+            console.error("Error updating recurring task time:", error);
+          }
+          
+          // Also update total recurring time spent today
+          setRecurringTimeSpent(prev => prev + timeSpentSeconds);
         }
-        
-        // Also update total recurring time spent today
-        setRecurringTimeSpent(prev => prev + timeSpentSeconds);
       }
     }
     
@@ -1595,43 +1579,27 @@ const updateCurrentTaskTime = () => {
   };
 
   // Mark task as complete
-  const completeTask = () => {
-    // Update time spent on current task before marking as complete
-    updateCurrentTaskTime();
-    
-    if (focusMode === 'non-recurring' && activeTask) {
-      // Update local state
-      setTasks(tasks.map(task => 
-        task.id === activeTask.id ? { ...task, completed: true } : task
-      ));
+    const completeTask = () => {
+      // Update time spent on current task before marking as complete
+      updateCurrentTaskTime();
       
-      // Also update in Firebase
-      try {
-        const taskRef = doc(db, 'users', userId, 'tasks', activeTask.id);
-        updateDoc(taskRef, { completed: true });
-      } catch (error) {
-        console.error("Error marking task as complete:", error);
+      if (activeTask) {
+          // Update local state
+        setTasks(tasks.map(task => 
+          task.id === activeTask.id ? { ...task, completed: true } : task
+        ));
+        
+        // Also update in Firebase
+        try {
+          const taskRef = doc(db, 'users', userId, 'tasks', activeTask.id);
+          updateDoc(taskRef, { completed: true });
+        } catch (error) {
+          console.error("Error marking task as complete:", error);
+        }
+        
+        goToNextTask();
       }
-      
-      goToNextTask();
-    } else if (focusMode === 'recurring' && activeRecurringTask) {
-      // For recurring tasks, we mark them as complete but later we might want 
-      // to implement a system to reset them based on their recurrence pattern
-      setTasks(tasks.map(task => 
-        task.id === activeRecurringTask.id ? { ...task, completed: true } : task
-      ));
-      
-      // Also update in Firebase
-      try {
-        const taskRef = doc(db, 'users', userId, 'tasks', activeRecurringTask.id);
-        updateDoc(taskRef, { completed: true });
-      } catch (error) {
-        console.error("Error marking recurring task as complete:", error);
-      }
-      
-      goToNextRecurringTask();
-    }
-  };
+    };
 
   // Format recurring time spent
   const formatRecurringTime = (seconds) => {
@@ -1798,36 +1766,48 @@ const updateCurrentTaskTime = () => {
           </div>
         </div>
         
-        {/* Task Mode Switcher */}
-        <div className="mode-switcher">
+  {/* Recurring Tasks Sidebar */}
+  <div className="recurring-tasks-sidebar">
+    <h3 className="sidebar-title">Recurring Tasks</h3>
+    {recurringTasks.length > 0 ? (
+      <div className="recurring-tasks-list">
+        <div className="no-selection-option">
           <button 
-            className={`mode-button ${focusMode === 'non-recurring' ? 'active' : ''}`}
-            onClick={() => {
-              if (focusMode !== 'non-recurring') {
-                // Update time spent on current task before switching
-                updateCurrentTaskTime();
-                setFocusMode('non-recurring');
-              }
-            }}
+            className={`recurring-task-button ${selectedRecurringTaskId === null ? 'selected' : ''}`}
+            onClick={() => setSelectedRecurringTaskId(null)}
           >
-            Non-recurring Tasks
-          </button>
-          <button 
-            className={`mode-button ${focusMode === 'recurring' ? 'active' : ''}`}
-            onClick={() => {
-              if (focusMode !== 'recurring') {
-                // Update time spent on current task before switching
-                updateCurrentTaskTime();
-                setFocusMode('recurring');
-              }
-            }}
-          >
-            Recurring Tasks
+            <span className="task-bullet">○</span>
+            <span className="task-name">No recurring task selected</span>
           </button>
         </div>
+        {recurringTasks.map(task => (
+          <div key={task.id} className="recurring-task-item">
+            <button 
+              className={`recurring-task-button ${selectedRecurringTaskId === task.id ? 'selected' : ''}`}
+              onClick={() => setSelectedRecurringTaskId(task.id)}
+            >
+              <span className="task-bullet">{selectedRecurringTaskId === task.id ? '●' : '○'}</span>
+              <span className="task-name">{task.title}</span>
+            </button>
+            <div className="task-time-info">
+              <span className="time-spent">{Math.floor(task.timeSpent / 60)}m total</span>
+              <span className="time-spent-today">{Math.floor((task.timeSpentToday || 0) / 60)}m today</span>
+            </div>
+          </div>
+        ))}
+        <div className="total-recurring-time">
+          <strong>Total recurring time today: {formatRecurringTime(recurringTimeSpent)}</strong>
+        </div>
+      </div>
+    ) : (
+      <div className="no-recurring-tasks">
+        <p>No recurring tasks available</p>
+      </div>
+    )}
+  </div>
         
         {/* Task Section */}
-        {focusMode === 'non-recurring' ? (
+        <div className="main-content-area">
           <div className="current-task-section">
             <h3 className="section-title">Current Priority Task</h3>
             
@@ -1904,90 +1884,7 @@ const updateCurrentTaskTime = () => {
               </div>
             )}
           </div>
-        ) : (
-          <div className="current-task-section">
-            <h3 className="section-title">Current Recurring Task</h3>
-            
-            {activeRecurringTask ? (
-              <div className="current-task">
-                <div className={`task-card priority-${activeRecurringTask.priority || '5'}`}>
-                  <h4 className="task-title">{activeRecurringTask.title}</h4>
-                  <div className="task-meta">
-                    <span className="meta-item recurrence-type">
-                      {activeRecurringTask.recurrence}
-                    </span>
-                    <div className="meta-item due-date">
-                      <label>Target Date:</label>
-                      <input
-                        type="date"
-                        value={activeRecurringTask.dueDate || ''}
-                        onChange={(e) => {
-                          console.log("Recurring task date input changed to:", e.target.value);
-                          updateTaskProperty(activeRecurringTask.id, 'dueDate', e.target.value);
-                        }}
-                      />
-                    </div>
-                    <div className="meta-item priority">
-                      <label>Priority:</label>
-                      <select
-                        value={activeRecurringTask.priority || '5'}
-                        onChange={(e) => updateTaskProperty(activeRecurringTask.id, 'priority', e.target.value)}
-                      >
-                        <option value="1">{priorityDescriptions['1']}</option>
-                        <option value="2">{priorityDescriptions['2']}</option>
-                        <option value="3">{priorityDescriptions['3']}</option>
-                        <option value="4">{priorityDescriptions['4']}</option>
-                        <option value="5">{priorityDescriptions['5']}</option>
-                      </select>
-                    </div>
-                    <span className="meta-item time-spent">
-                      Time spent: {Math.floor(activeRecurringTask.timeSpent / 60)}m
-                    </span>
-                    <span className="meta-item time-spent-today">
-                      Time spent today: {Math.floor((activeRecurringTask.timeSpentToday || 0) / 60)}m
-                    </span>
-                  </div>
-                  <div className="recurring-stats">
-                    <p>Total time spent on recurring tasks today: {formatRecurringTime(recurringTimeSpent)}</p>
-                  </div>
-                </div>
-                
-                <div className="task-navigation">
-                  <button 
-                    onClick={goToPreviousRecurringTask}
-                    className="nav-button prev"
-                    disabled={recurringTasks.length <= 1}
-                  >
-                    Previous
-                  </button>
-                  <button 
-                    onClick={completeTask}
-                    className="action-button complete"
-                  >
-                    Mark Complete
-                  </button>
-                  <button 
-                    onClick={goToNextRecurringTask}
-                    className="nav-button next"
-                    disabled={recurringTasks.length <= 1}
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="no-tasks">
-                <p>No recurring tasks available.</p>
-                <button 
-                  onClick={() => setActiveView('tasks')}
-                  className="action-button"
-                >
-                  Add More Tasks
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

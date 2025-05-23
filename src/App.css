@@ -654,6 +654,8 @@ button {
   padding: 1rem;
   border-radius: 0.375rem;
   margin-bottom: 1.5rem;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .task-card.priority-1 {
@@ -884,6 +886,135 @@ button {
   border-radius: 0.375rem;
   font-weight: 500;
   align-self: flex-end;
+}
+
+/* Recurring Tasks Sidebar */
+.recurring-tasks-sidebar {
+  position: absolute;
+  top: 0;
+  right: 1rem;
+  width: 280px;
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  max-height: 450px;
+  overflow-y: auto;
+}
+
+.sidebar-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
+.recurring-tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.recurring-task-item {
+  background-color: #f9fafb;
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  border: 1px solid #e5e7eb;
+}
+
+.no-selection-option {
+  background-color: #f0f9ff;
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  border: 1px solid #bae6fd;
+  margin-bottom: 0.5rem;
+}
+
+.recurring-task-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+}
+
+.recurring-task-button:hover {
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.recurring-task-button.selected {
+  background-color: rgba(59, 130, 246, 0.2);
+  font-weight: 500;
+}
+
+.task-bullet {
+  font-size: 1.25rem;
+  color: #3b82f6;
+  font-weight: bold;
+}
+
+.task-name {
+  flex: 1;
+  font-size: 0.875rem;
+  color: #1f2937;
+}
+
+.task-time-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  padding-left: 1.75rem;
+}
+
+.time-spent, .time-spent-today {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.total-recurring-time {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.875rem;
+  color: #1f2937;
+  text-align: center;
+}
+
+.no-recurring-tasks {
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.875rem;
+  padding: 1rem;
+}
+
+/* Update main content area to make room for sidebar */
+.main-content-area {
+  position: relative;
+  margin-right: 300px;
+  width: calc(100% - 300px);
+  overflow: visible;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 1024px) {
+  .recurring-tasks-sidebar {
+    position: static;
+    width: 100%;
+    margin-bottom: 1rem;
+    max-height: 200px;
+  }
+  
+  .main-content-area {
+    margin-right: 0;
+  }
 }
 
 /* Responsive adjustments */
@@ -1352,6 +1483,14 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  max-width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.task-meta .meta-item input,
+.task-meta .meta-item select {
+  max-width: 100%;
+  width: 100%;
 }
 
 .task-meta .meta-item label {
